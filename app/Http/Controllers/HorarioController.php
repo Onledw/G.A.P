@@ -8,10 +8,8 @@ use App\Models\Ausencia;
 use App\Models\SesionElectiva;
 use App\Models\RegistroJornada;
 
-
 class HorarioController extends Controller
 {
-
     public function panel()
     {
         $usuario = Auth::user();
@@ -26,51 +24,53 @@ class HorarioController extends Controller
             ->orderBy('fecha_inicio', 'desc')
             ->get();
 
-        // Buscar si tiene una jornada activa (sin fin)
         $jornadaActiva = RegistroJornada::where('docente_id', $usuario->id)
             ->whereNull('fin')
             ->first();
 
-        return view('panel', compact('usuario', 'ausencias', 'horario', 'jornadaActiva'));
+        return response()->json([
+            'usuario' => $usuario,
+            'horario' => $horario,
+            'ausencias' => $ausencias,
+            'jornada_activa' => $jornadaActiva,
+        ]);
     }
+
     public function iniciar()
-{
-    $docente = Auth::user();
+    {
+        $docente = Auth::user();
 
-    // Si ya hay una jornada activa, no permitir iniciar otra
-    $jornadaActiva = RegistroJornada::where('docente_id', $docente->id)
-        ->whereNull('fin')
-        ->first();
+        $jornadaActiva = RegistroJornada::where('docente_id', $docente->id)
+            ->whereNull('fin')
+            ->first();
 
-    if ($jornadaActiva) {
-        return back()->with('error', 'Ya tienes una jornada activa.');
+        if ($jornadaActiva) {
+            return response()->json(['error' => 'Ya tienes una jornada activa.'], 400);
+        }
+
+        RegistroJornada::create([
+            'docente_id' => $docente->id,
+            'inicio' => now(),
+        ]);
+
+        return response()->json(['success' => 'Jornada iniciada correctamente.']);
     }
 
-    RegistroJornada::create([
-        'docente_id' => $docente->id,
-        'inicio' => now(),
-    ]);
+    public function finalizar()
+    {
+        $docente = Auth::user();
 
-    return back()->with('success', 'Jornada iniciada correctamente.');
-}
+        $jornada = RegistroJornada::where('docente_id', $docente->id)
+            ->whereNull('fin')
+            ->first();
 
-public function finalizar()
-{
-    $docente = Auth::user();
+        if (!$jornada) {
+            return response()->json(['error' => 'No tienes una jornada activa para finalizar.'], 400);
+        }
 
-    $jornada = RegistroJornada::where('docente_id', $docente->id)
-        ->whereNull('fin')
-        ->first();
+        $jornada->fin = now();
+        $jornada->save();
 
-    if (!$jornada) {
-        return back()->with('error', 'No tienes una jornada activa para finalizar.');
+        return response()->json(['success' => 'Jornada finalizada correctamente.']);
     }
-
-    $jornada->fin = now();
-    $jornada->save();
-
-    return back()->with('success', 'Jornada finalizada correctamente.');
-}
-
-
 }

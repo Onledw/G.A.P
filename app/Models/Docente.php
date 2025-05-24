@@ -3,11 +3,15 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class Docente extends Authenticatable
 {
+    use HasApiTokens, Notifiable;
+
     protected $table = 'docentes';
-    protected $primaryKey = 'id'; // <- usamos ID como clave primaria
+    protected $primaryKey = 'id';
     public $incrementing = true;
 
     protected $fillable = [
@@ -17,6 +21,11 @@ class Docente extends Authenticatable
     protected $hidden = [
         'clave',
     ];
+
+    public function getAuthIdentifierName()
+    {
+        return 'dni';
+    }
 
     public function getAuthPassword()
     {
@@ -37,6 +46,4 @@ class Docente extends Authenticatable
     {
         return $this->hasMany(RegistroJornada::class, 'docente_id', 'id');
     }
-
-
 }

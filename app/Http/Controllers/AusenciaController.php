@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Ausencia;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
+
 
 class AusenciaController extends Controller
 {
@@ -17,9 +19,9 @@ class AusenciaController extends Controller
             'todoeldia' => 'nullable|boolean',
         ]);
 
-        $docente = Auth::user(); // Asegúrate que tiene 'id'
+        $docente = Auth::user();
 
-        Ausencia::create([
+        $ausencia = Ausencia::create([
             'docente_id' => $docente->id,
             'fecha_inicio' => $request->fecha_inicio,
             'fecha_fin' => $request->fecha_fin,
@@ -28,16 +30,28 @@ class AusenciaController extends Controller
             'todoeldia' => $request->has('todoeldia') ? 1 : 0,
         ]);
 
-        return redirect()->route('panel')->with('success', 'Ausencia registrada correctamente.');
+        return response()->json([
+            'message' => 'Ausencia registrada correctamente.',
+            'ausencia' => $ausencia,
+        ], 201);
     }
 
-    public function verAusencias()
+    public function verAusenciasDia()
     {
-        $docente = Auth::user();
-        $ausencias = $docente->ausencias()->orderBy('fecha_inicio', 'desc')->get();
+        $hoy = Carbon::today();
 
-    return view('ausencias', compact('ausencias'));
+        $ausencias = Ausencia::whereDate('fecha_inicio', '<=', $hoy)
+            ->whereDate('fecha_fin', '>=', $hoy)
+            ->with('docente') // asumiendo relación definida
+            ->orderBy('fecha_inicio', 'asc')
+            ->get();
+
+        return response()->json([
+            'fecha' => $hoy->toDateString(),
+            'ausencias' => $ausencias,
+        ]);
     }
+
 
 
 }

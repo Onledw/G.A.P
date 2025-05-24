@@ -21,8 +21,8 @@ class Ausencia extends Model
     ];
 
     public function docente()
-    {
-        return $this->belongsTo(Docente::class);
-    }
+{
+    return $this->belongsTo(Docente::class, 'docente_id');
+}
 
 }

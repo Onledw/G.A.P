@@ -5,47 +5,76 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\RegistroJornada;
+use App\Models\Ausencia;
+use App\Models\SesionLectiva;
 use Carbon\Carbon;
 
 class RegistroJornadaController extends Controller
 {
+    // Devuelve datos relevantes para el panel del docente
     public function panel()
     {
-    $usuario = Auth::user();
+        $usuario = Auth::user();
 
-    $ausencias = Ausencia::where('docente_id', $usuario->id)->orderBy('fecha_inicio', 'desc')->get();
-    $horario = SesionLectiva::where('docente_id', $usuario->id)->orderBy('dia_semana')->orderBy('hora_inicio')->get();
-    $registroHoy = RegistroJornada::where('docente_id', $usuario->id)
-        ->whereDate('inicio', today())
-        ->latest('inicio')
-        ->first();
+        $ausencias = Ausencia::where('docente_id', $usuario->id)
+            ->orderBy('fecha_inicio', 'desc')
+            ->get();
 
-    return view('panel', compact('ausencias', 'horario', 'registroHoy'));
-    }
+        $horario = SesionLectiva::where('docente_id', $usuario->id)
+            ->orderBy('dia_semana')
+            ->orderBy('hora_inicio')
+            ->get();
 
-    // Iniciar jornada
-    public function iniciar()
-    {
-
-        $docente = Auth::user();
-
-        $jornadaActiva = RegistroJornada::where('docente_id', $docente->id)
-            ->whereNull('fin')
+        $registroHoy = RegistroJornada::where('docente_id', $usuario->id)
+            ->whereDate('inicio', today())
+            ->latest('inicio')
             ->first();
 
-        if ($jornadaActiva) {
-            return redirect()->back()->with('error', 'Ya tienes una jornada activa.');
+        return response()->json([
+            'ausencias' => $ausencias,
+            'horario' => $horario,
+            'registroHoy' => $registroHoy,
+        ]);
+    }
+
+    // Inicia jornada
+    public function iniciar()
+    {
+        $docente = Auth::user();
+
+        // Cierra automáticamente jornadas anteriores sin cerrar
+        $jornadaAnteriorSinCerrar = RegistroJornada::where('docente_id', $docente->id)
+            ->whereNull('fin')
+            ->whereDate('inicio', '<', Carbon::today())
+            ->first();
+
+        if ($jornadaAnteriorSinCerrar) {
+            $jornadaAnteriorSinCerrar->fin = Carbon::parse($jornadaAnteriorSinCerrar->inicio)->endOfDay();
+            $jornadaAnteriorSinCerrar->save();
         }
 
-        RegistroJornada::create([
+        // Verifica jornada activa hoy
+        $jornadaHoyActiva = RegistroJornada::where('docente_id', $docente->id)
+            ->whereNull('fin')
+            ->whereDate('inicio', Carbon::today())
+            ->first();
+
+        if ($jornadaHoyActiva) {
+            return response()->json(['error' => 'Ya tienes una jornada activa hoy.'], 409);
+        }
+
+        $nuevaJornada = RegistroJornada::create([
             'docente_id' => $docente->id,
             'inicio' => Carbon::now(),
         ]);
 
-        return redirect()->back()->with('success', 'Jornada iniciada.');
+        return response()->json([
+            'message' => 'Jornada iniciada.',
+            'jornada' => $nuevaJornada,
+        ], 201);
     }
 
-    // Finalizar jornada
+    // Finaliza jornada
     public function finalizar()
     {
         $docente = Auth::user();
@@ -56,12 +85,15 @@ class RegistroJornadaController extends Controller
             ->first();
 
         if (!$jornadaActiva) {
-            return redirect()->back()->with('error', 'No tienes ninguna jornada activa.');
+            return response()->json(['error' => 'No tienes ninguna jornada activa.'], 404);
         }
 
         $jornadaActiva->fin = Carbon::now();
         $jornadaActiva->save();
 
-        return redirect()->back()->with('success', 'Jornada finalizada.');
+        return response()->json([
+            'message' => 'Jornada finalizada.',
+            'jornada' => $jornadaActiva,
+        ]);
     }
 }

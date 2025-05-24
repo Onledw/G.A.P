@@ -2,50 +2,43 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PanelController;
 use App\Http\Controllers\AusenciaController;
-use App\Http\Controllers\HorarioController;
+use App\Http\Controllers\GuardiaController;
 use App\Http\Controllers\RegistroJornadaController;
 
-// Vista de login
-Route::get('/', function () {
-    if (auth()->check()) {
-        return redirect()->route('panel');
-    }
-    return view('index');
-})->name('login');
+// ——————————————————————————————
+// RUTAS PÚBLICAS
+// ——————————————————————————————
+Route::post('/login', [AuthController::class, 'login'])->name('login');
 
-// Procesar login
-Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+// ——————————————————————————————
+// RUTAS PROTEGIDAS
+// ——————————————————————————————
+Route::middleware('auth:sanctum')->group(function () {
 
-// Logout
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    // Logout
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-// Panel principal (solo uno)
-Route::get('/panel', [AuthController::class, 'panel'])->name('panel')->middleware('auth');
+    // Panel de usuario (info general)
+    Route::get('/panel', [PanelController::class, 'index'])->name('panel.index');
 
-// =============================
-// AUSENCIAS
-// =============================
-Route::middleware('auth')->group(function () {
-    Route::get('/ausencia', [AusenciaController::class, 'form'])->name('ausencia.form');
-    Route::post('/ausencia', [AusenciaController::class, 'registrar'])->name('ausencia.registrar');
-    Route::get('/ausencias', [AusenciaController::class, 'verAusencias'])->name('ausencias');
+    // Registro de jornada (iniciar y finalizar)
+    Route::post('/registro-jornada/start', [RegistroJornadaController::class, 'iniciar'])->name('registro-jornada.start');
+    Route::post('/registro-jornada/stop', [RegistroJornadaController::class, 'finalizar'])->name('registro-jornada.stop');
+
+    // Ausencias (crear)
+    Route::post('/ausencias', [AusenciaController::class, 'registrar'])->name('ausencias.store');
+
+    // Guardias
+    Route::get('/guardias/pendientes', [GuardiaController::class, 'index'])->name('guardias.index'); // listado guardias pendientes
+    Route::post('/guardias', [GuardiaController::class, 'store'])->name('guardias.store'); // asignar guardia
+
+    // Administración (solo admins)
+    Route::middleware('can:admin')->group(function () {
+        Route::get('/admin/docentes', [AuthController::class, 'panelAdmin'])->name('admin.docentes.index');
+        Route::post('/admin/docentes', [AuthController::class, 'altaDocente'])->name('admin.docentes.store');
+        Route::delete('/admin/docentes/{id}', [AuthController::class, 'bajaDocente'])->name('admin.docentes.destroy');
+    });
+
 });
-
-// =============================
-// HORARIO
-// =============================
-Route::get('/horario', [HorarioController::class, 'verHorario'])->name('horario')->middleware('auth');
-
-// =============================
-// REGISTRO JORNADA
-// =============================
-Route::middleware('auth')->group(function () {
-    Route::post('/registro/inicio', [RegistroJornadaController::class, 'iniciar'])->name('registro.inicio');
-    Route::post('/registro/fin', [RegistroJornadaController::class, 'finalizar'])->name('registro.fin');
-});
-
-// =============================
-// ADMIN
-// =============================
-Route::get('/admin', [AuthController::class, 'panelAdmin'])->name('admin.panel')->middleware('auth');

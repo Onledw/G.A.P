@@ -16,6 +16,11 @@ class Guardia extends Model
         'Ausencias_id', 'Sesiones_id', 'ProfesorSustituto',
     ];
 
+    public function docente()
+    {
+        return $this->belongsTo(Docente::class);
+    }
+
     public function ausencia(): BelongsTo
     {
         return $this->belongsTo(Ausencia::class, 'Ausencias_id');
