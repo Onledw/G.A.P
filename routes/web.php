@@ -1,10 +1,10 @@
 <?php
+
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AusenciaController;
 use App\Http\Controllers\HorarioController;
-
-
+use App\Http\Controllers\RegistroJornadaController;
 
 // Vista de login
 Route::get('/', function () {
@@ -17,27 +17,35 @@ Route::get('/', function () {
 // Procesar login
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 
-// Panel de usuario autenticado
-Route::get('/panel', [AuthController::class, 'panel'])->middleware('auth')->name('panel');
-
 // Logout
-Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-// Ausencias
-Route::get('/ausencia', [AuthController::class, 'formAusencia'])->name('ausencia.form')->middleware('auth');
+// Panel principal (solo uno)
+Route::get('/panel', [AuthController::class, 'panel'])->name('panel')->middleware('auth');
 
-Route::post('/ausencia', [AuthController::class, 'registrarAusencia'])->name('ausencia.registrar')->middleware('auth');
+// =============================
+// AUSENCIAS
+// =============================
+Route::middleware('auth')->group(function () {
+    Route::get('/ausencia', [AusenciaController::class, 'form'])->name('ausencia.form');
+    Route::post('/ausencia', [AusenciaController::class, 'registrar'])->name('ausencia.registrar');
+    Route::get('/ausencias', [AusenciaController::class, 'verAusencias'])->name('ausencias');
+});
 
-// Horario
-Route::get('/horario', [AuthController::class, 'verHorario'])->name('horario')->middleware('auth');
-// Admin
+// =============================
+// HORARIO
+// =============================
+Route::get('/horario', [HorarioController::class, 'verHorario'])->name('horario')->middleware('auth');
 
+// =============================
+// REGISTRO JORNADA
+// =============================
+Route::middleware('auth')->group(function () {
+    Route::post('/registro/inicio', [RegistroJornadaController::class, 'iniciar'])->name('registro.inicio');
+    Route::post('/registro/fin', [RegistroJornadaController::class, 'finalizar'])->name('registro.fin');
+});
+
+// =============================
+// ADMIN
+// =============================
 Route::get('/admin', [AuthController::class, 'panelAdmin'])->name('admin.panel')->middleware('auth');
-//Ausencias
-
-Route::post('/registrar-ausencia', [AusenciaController::class, 'registrar'])->middleware('auth')->name('ausencia.registrar');
-
-Route::get('/ausencias', [AusenciaController::class, 'verAusencias'])->middleware('auth')->name('ausencias');
-
-Route::get('/panel', [HorarioController::class, 'panel'])->name('panel');
-

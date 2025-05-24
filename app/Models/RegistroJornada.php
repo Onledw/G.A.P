@@ -6,17 +6,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RegistroJornada extends Model
 {
-    protected $table = 'RegistroJornada';
-    protected $primaryKey = 'idRegistro';
+    protected $table = 'registro_jornada';
 
-    public $timestamps = false;
-
-    protected $fillable = [
-        'Docentes_idDocente', 'InicioJornada', 'FinJornada', 'DiaSemana',
-    ];
+    protected $fillable = ['docente_id', 'inicio', 'fin'];
 
     public function docente(): BelongsTo
     {
-        return $this->belongsTo(Docente::class, 'Docentes_idDocente');
+        return $this->belongsTo(Docente::class, 'docente_id', 'id');
     }
+
 }

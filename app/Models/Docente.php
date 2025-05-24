@@ -33,5 +33,10 @@ class Docente extends Authenticatable
         return $this->hasMany(SesionElectiva::class, 'docente_id', 'id');
     }
 
+    public function jornadas()
+    {
+        return $this->hasMany(RegistroJornada::class, 'docente_id', 'id');
+    }
+
 
 }

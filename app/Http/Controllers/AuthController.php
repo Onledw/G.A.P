@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Docente;
 use App\Models\Ausencia;
+use App\Models\SesionElctiva;
 use Carbon\Carbon;
 
 class AuthController extends Controller
@@ -35,19 +36,24 @@ class AuthController extends Controller
     public function panel()
     {
         $usuario = Auth::user();
-        $hoy = Carbon::today();
 
-        $ausenciasHoy = \App\Models\Ausencia::with('docente')
-            ->whereDate('fecha_inicio', '<=', $hoy)
-            ->whereDate('fecha_fin', '>=', $hoy)
-            ->orderBy('fecha_inicio', 'desc')
+        $ausencias = \App\Models\Ausencia::where('docente_id', $usuario->id)
+            ->orderByDesc('fecha_inicio')
             ->get();
-        // Obtener todas las ausencias ordenadas por fecha_inicio descendente
-        $ausencias = \App\Models\Ausencia::with('docente')->orderBy('fecha_inicio', 'desc')->get();
 
-        $usuario = Auth::user(); // obtiene al docente logueado
-        return view('panel', compact('usuario', 'ausencias'));
+        $horario = \App\Models\SesionElectiva::where('docente_id', $usuario->id)
+            ->orderBy('dia_semana')
+            ->orderBy('hora_inicio')
+            ->get();
+
+        $registroHoy = \App\Models\RegistroJornada::where('docente_id', $usuario->id)
+            ->whereDate('inicio', today())
+            ->latest()
+            ->first();
+
+        return view('panel', compact('ausencias', 'horario', 'registroHoy'));
     }
+
 
     public function logout(Request $request)
     {
