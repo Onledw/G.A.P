@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -8,9 +7,19 @@ use Illuminate\Support\Facades\Validator;
 
 class GuardiaController extends Controller
 {
-    // GET /api/guardias/pendientes
-    public function index()
+    public function mostrarPendientes()
     {
+        $hoy = now();
+
+        $diaSemana = match ($hoy->dayOfWeekIso) {
+            1 => 'L',
+            2 => 'M',
+            3 => 'X',
+            4 => 'J',
+            5 => 'V',
+            default => null,
+        };
+
         $sesiones = DB::select("
             SELECT
                 s.id AS sesion_id,
@@ -31,15 +40,7 @@ class GuardiaController extends Controller
                     s.hora_fin <= TIME(a.fecha_fin)
                 )
               )
-              AND s.dia_semana =
-                CASE DAYOFWEEK(CURDATE())
-                    WHEN 2 THEN 'L'
-                    WHEN 3 THEN 'M'
-                    WHEN 4 THEN 'X'
-                    WHEN 5 THEN 'J'
-                    WHEN 6 THEN 'V'
-                    ELSE NULL
-                END
+              AND s.dia_semana = ?
               AND NOT EXISTS (
                 SELECT 1
                 FROM sesiones_lectivas s2
@@ -62,13 +63,12 @@ class GuardiaController extends Controller
                             )
                     )
             )
-        ");
+        ", [$diaSemana]);
 
-        return response()->json(['sesiones' => $sesiones], 200);
+        return view('guardias.pendientes', compact('sesiones'));
     }
 
-    // POST /api/guardias
-    public function store(Request $request)
+    public function registrar(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'hora' => 'required|date_format:H:i:s',
@@ -77,10 +77,10 @@ class GuardiaController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return back()->withErrors($validator)->withInput();
         }
 
-        $guardiaId = DB::table('guardias')->insertGetId([
+        DB::table('guardias')->insert([
             'fecha' => now()->toDateString(),
             'hora' => $request->hora,
             'aula' => $request->aula,
@@ -90,9 +90,6 @@ class GuardiaController extends Controller
             'updated_at' => now(),
         ]);
 
-        return response()->json([
-            'message' => 'Guardia asignada correctamente',
-            'guardia_id' => $guardiaId,
-        ], 201);
+        return redirect()->route('guardias.pendientes')->with('success', 'Guardia asignada correctamente.');
     }
 }

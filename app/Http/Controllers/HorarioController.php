@@ -28,12 +28,8 @@ class HorarioController extends Controller
             ->whereNull('fin')
             ->first();
 
-        return response()->json([
-            'usuario' => $usuario,
-            'horario' => $horario,
-            'ausencias' => $ausencias,
-            'jornada_activa' => $jornadaActiva,
-        ]);
+        // Ahora devolvemos la vista con los datos
+        return view('panel', compact('usuario', 'horario', 'ausencias', 'jornadaActiva'));
     }
 
     public function iniciar()
@@ -45,7 +41,7 @@ class HorarioController extends Controller
             ->first();
 
         if ($jornadaActiva) {
-            return response()->json(['error' => 'Ya tienes una jornada activa.'], 400);
+            return redirect()->back()->with('error', 'Ya tienes una jornada activa.');
         }
 
         RegistroJornada::create([
@@ -53,7 +49,7 @@ class HorarioController extends Controller
             'inicio' => now(),
         ]);
 
-        return response()->json(['success' => 'Jornada iniciada correctamente.']);
+        return redirect()->back()->with('success', 'Jornada iniciada correctamente.');
     }
 
     public function finalizar()
@@ -65,12 +61,12 @@ class HorarioController extends Controller
             ->first();
 
         if (!$jornada) {
-            return response()->json(['error' => 'No tienes una jornada activa para finalizar.'], 400);
+            return redirect()->back()->with('error', 'No tienes una jornada activa para finalizar.');
         }
 
         $jornada->fin = now();
         $jornada->save();
 
-        return response()->json(['success' => 'Jornada finalizada correctamente.']);
+        return redirect()->back()->with('success', 'Jornada finalizada correctamente.');
     }
 }

@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -11,38 +10,11 @@ use Carbon\Carbon;
 
 class RegistroJornadaController extends Controller
 {
-    // Devuelve datos relevantes para el panel del docente
-    public function panel()
-    {
-        $usuario = Auth::user();
-
-        $ausencias = Ausencia::where('docente_id', $usuario->id)
-            ->orderBy('fecha_inicio', 'desc')
-            ->get();
-
-        $horario = SesionLectiva::where('docente_id', $usuario->id)
-            ->orderBy('dia_semana')
-            ->orderBy('hora_inicio')
-            ->get();
-
-        $registroHoy = RegistroJornada::where('docente_id', $usuario->id)
-            ->whereDate('inicio', today())
-            ->latest('inicio')
-            ->first();
-
-        return response()->json([
-            'ausencias' => $ausencias,
-            'horario' => $horario,
-            'registroHoy' => $registroHoy,
-        ]);
-    }
-
-    // Inicia jornada
     public function iniciar()
     {
         $docente = Auth::user();
 
-        // Cierra automáticamente jornadas anteriores sin cerrar
+        // Cierra jornadas antiguas sin cerrar
         $jornadaAnteriorSinCerrar = RegistroJornada::where('docente_id', $docente->id)
             ->whereNull('fin')
             ->whereDate('inicio', '<', Carbon::today())
@@ -53,28 +25,24 @@ class RegistroJornadaController extends Controller
             $jornadaAnteriorSinCerrar->save();
         }
 
-        // Verifica jornada activa hoy
+        // Ya hay jornada activa hoy
         $jornadaHoyActiva = RegistroJornada::where('docente_id', $docente->id)
             ->whereNull('fin')
             ->whereDate('inicio', Carbon::today())
             ->first();
 
         if ($jornadaHoyActiva) {
-            return response()->json(['error' => 'Ya tienes una jornada activa hoy.'], 409);
+            return redirect()->back()->with('error', 'Ya tienes una jornada activa hoy.');
         }
 
-        $nuevaJornada = RegistroJornada::create([
+        RegistroJornada::create([
             'docente_id' => $docente->id,
-            'inicio' => Carbon::now(),
+            'inicio' => now(),
         ]);
 
-        return response()->json([
-            'message' => 'Jornada iniciada.',
-            'jornada' => $nuevaJornada,
-        ], 201);
+        return redirect()->back()->with('success', 'Jornada iniciada correctamente.');
     }
 
-    // Finaliza jornada
     public function finalizar()
     {
         $docente = Auth::user();
@@ -85,15 +53,12 @@ class RegistroJornadaController extends Controller
             ->first();
 
         if (!$jornadaActiva) {
-            return response()->json(['error' => 'No tienes ninguna jornada activa.'], 404);
+            return redirect()->back()->with('error', 'No tienes una jornada activa.');
         }
 
-        $jornadaActiva->fin = Carbon::now();
+        $jornadaActiva->fin = now();
         $jornadaActiva->save();
 
-        return response()->json([
-            'message' => 'Jornada finalizada.',
-            'jornada' => $jornadaActiva,
-        ]);
+        return redirect()->back()->with('success', 'Jornada finalizada correctamente.');
     }
 }

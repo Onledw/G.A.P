@@ -8,6 +8,11 @@ use App\Models\Docente;
 
 class AuthController extends Controller
 {
+    public function mostrarLogin()
+    {
+        return view('auth.login');
+    }
+
     public function login(Request $request)
     {
         $request->validate([
@@ -18,80 +23,70 @@ class AuthController extends Controller
         $docente = Docente::where('dni', $request->usuario)->first();
 
         if (!$docente || !Hash::check($request->password, $docente->clave)) {
-            return response()->json(['error' => 'Credenciales inválidas'], 401);
+            return back()->withErrors(['usuario' => 'Credenciales inválidas'])->withInput();
         }
 
-        $token = $docente->createToken('api-token')->plainTextToken;
+        Auth::login($docente);
 
-        return response()->json([
-            'user' => $docente,
-            'token' => $token,
-        ]);
+        return redirect()->route('panel');
     }
-
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
-        return response()->json(['message' => 'Sesión cerrada correctamente.']);
+        return redirect('/login')->with('status', 'Sesión cerrada correctamente.');
     }
 
     public function panelAdmin()
     {
         if (!Auth::user()->admin) {
-            return response()->json(['error' => 'Acceso no autorizado'], 403);
+            abort(403, 'Acceso no autorizado');
         }
 
         $docentes = Docente::all();
-
-        return response()->json([
-            'docentes' => $docentes
-        ]);
+        return view('admin', compact('docentes'));
     }
 
     public function altaDocente(Request $request)
     {
-    $request->validate([
-        'dni' => 'required|unique:docentes,dni',
-        'nombre' => 'required',
-        'apellido1' => 'required',
-        'clave' => 'required|min:4',
-        'fecha_ingreso' => 'required|date',
-        'fecha_nacimiento' => 'required|date',
-        'sexo' => 'required|in:H,M,O',
-    ]);
+        $request->validate([
+            'dni' => 'required|unique:docentes,dni',
+            'nombre' => 'required',
+            'apellido1' => 'required',
+            'clave' => 'required|min:4',
+            'fecha_ingreso' => 'required|date',
+            'fecha_nacimiento' => 'required|date',
+            'sexo' => 'required|in:H,M,O',
+        ]);
 
-    $docente = Docente::create([
-        'dni' => $request->dni,
-        'nombre' => $request->nombre,
-        'apellido1' => $request->apellido1,
-        'apellido2' => $request->apellido2,
-        'clave' => Hash::make($request->clave),
-        'admin' => $request->has('admin'),
-        'fecha_ingreso' => $request->fecha_ingreso,
-        'fecha_nacimiento' => $request->fecha_nacimiento,
-        'sexo' => $request->sexo,
-    ]);
+        $docente = Docente::create([
+            'dni' => $request->dni,
+            'nombre' => $request->nombre,
+            'apellido1' => $request->apellido1,
+            'apellido2' => $request->apellido2,
+            'clave' => Hash::make($request->clave),
+            'admin' => $request->has('admin'),
+            'fecha_ingreso' => $request->fecha_ingreso,
+            'fecha_nacimiento' => $request->fecha_nacimiento,
+            'sexo' => $request->sexo,
+        ]);
 
-    return response()->json([
-        'message' => 'Docente dado de alta correctamente.',
-        'docente' => $docente
-    ], 201);
+        return redirect()->route('admin.panel')->with('success', 'Docente dado de alta correctamente.');
     }
 
     public function bajaDocente($id)
     {
-    $docente = Docente::findOrFail($id);
+        $docente = Docente::findOrFail($id);
 
-    if (auth()->user()->id == $docente->id) {
-        return response()->json(['error' => 'No puedes eliminar tu propio usuario.'], 403);
+        if (auth()->user()->id == $docente->id) {
+            return redirect()->route('admin.panel')->withErrors(['error' => 'No puedes eliminar tu propio usuario.']);
+        }
+
+        $docente->delete();
+
+        return redirect()->route('admin.panel')->with('success', 'Docente eliminado correctamente.');
     }
-
-    $docente->delete();
-
-    return response()->json(['message' => 'Docente eliminado correctamente.']);
-    }
-
-
 }

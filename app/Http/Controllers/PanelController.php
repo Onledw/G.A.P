@@ -64,14 +64,15 @@ class PanelController extends Controller
         // Registro jornada de hoy si existe
         $registroHoy = $user->jornadas()->whereDate('inicio', $hoy)->first();
 
-        // Retornar datos en JSON para cliente REST
-        return response()->json([
-            'user' => $user,
+        return view('panel', [
+            'usuario' => $user,
             'fecha_hoy' => $hoy->toDateString(),
             'ausencias_hoy' => $ausenciasHoy,
-            'ausencias_por_cubrir' => $ausenciasPorCubrir->values(), // reset keys
+            'ausencias_por_cubrir' => $ausenciasPorCubrir->values(),
             'horario' => $horario,
             'registro_jornada_hoy' => $registroHoy,
+            'ausencias' => Ausencia::where('docente_id', $user->id)->orderBy('fecha_inicio', 'desc')->get(),
         ]);
+
     }
 }
