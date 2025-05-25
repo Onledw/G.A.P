@@ -7,13 +7,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Guardia extends Model
 {
-    protected $table = 'Guardias';
-    protected $primaryKey = 'idGuardias';
+    protected $table = 'guardias';
+    protected $primaryKey = 'id';
 
-    public $timestamps = false;
+    // Permite que Laravel administre created_at y updated_at
+    public $timestamps = true;
 
     protected $fillable = [
-        'Ausencias_id', 'Sesiones_id', 'ProfesorSustituto',
+        'ausencia_id',
+        'docente_id',
+        'fecha',
+        'hora',
+        'aula',
+        'estado',
     ];
 
     public function docente()
@@ -23,16 +29,11 @@ class Guardia extends Model
 
     public function ausencia(): BelongsTo
     {
-        return $this->belongsTo(Ausencia::class, 'Ausencias_id');
-    }
-
-    public function sesion(): BelongsTo
-    {
-        return $this->belongsTo(SesionesLectivas::class, 'Sesiones_id');
+        return $this->belongsTo(Ausencia::class, 'ausencia_id');
     }
 
     public function docenteSustituto(): BelongsTo
     {
-        return $this->belongsTo(Docente::class, 'ProfesorSustituto');
+        return $this->belongsTo(Docente::class, 'docente_id');
     }
 }

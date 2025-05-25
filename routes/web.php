@@ -18,33 +18,33 @@ Route::get('/login', function () {
     return view('index');  // formulario de login
 })->name('index');
 
-Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth')->group(function () {
 
-    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    Route::get('/panel', [PanelController::class, 'index'])->name('panel');
-    Route::post('/panel.iniciar', [RegistroJornadaController::class, 'iniciar'])->name('iniciar');
-    Route::post('/panel.finalizar', [RegistroJornadaController::class, 'finalizar'])->name('finalizar');
+Route::get('/panel', [PanelController::class, 'index'])->name('panel');
+Route::post('/panel.iniciar', [RegistroJornadaController::class, 'iniciar'])->name('iniciar');
+Route::post('/panel.finalizar', [RegistroJornadaController::class, 'finalizar'])->name('finalizar');
 
-    Route::post('/ausencias', [AusenciaController::class, 'registrar'])->name('ausencias.store');
+Route::post('/ausencias', [AusenciaController::class, 'registrar'])->name('ausencias.store');
 
-    Route::get('/ausencias/crear', function () {
+Route::get('/ausencias/crear', function () {
         return view('ausencias.crear');
     })->name('ausencias.crear');
 
-    Route::get('/ausencias/historial', [AusenciaController::class, 'historial'])->name('ausencias.historial');
+Route::get('/ausencias/historial', [AusenciaController::class, 'historial'])->name('ausencias.historial');
 
 
-    Route::get('/guardias/pendientes', [GuardiaController::class, 'index'])->name('guardias.index');
-    Route::post('/guardias', [GuardiaController::class, 'store'])->name('guardias.store');
+Route::get('/guardias/pendientes', [GuardiaController::class, 'index'])->name('guardias.index');
 
-    Route::get('/admin', [AuthController::class, 'panelAdmin'])->name('admin.panel');
-    Route::post('/admin/alta', [AuthController::class, 'altaDocente'])->name('admin.altaDocente');
-    Route::delete('/admin/baja/{id}', [AuthController::class, 'bajaDocente'])->name('admin.bajaDocente');
+Route::post('/guardias', [GuardiaController::class, 'store'])->name('guardias.store');
+
+Route::get('/admin', [AuthController::class, 'panelAdmin'])->name('admin.panel');
+Route::post('/admin/alta', [AuthController::class, 'altaDocente'])->name('admin.altaDocente');
+Route::delete('/admin/baja/{id}', [AuthController::class, 'bajaDocente'])->name('admin.bajaDocente');
 
 
 

@@ -33,12 +33,15 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        Auth::logout();
+        auth()->logout(); // válido solo para sesión tradicional
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/login')->with('status', 'Sesión cerrada correctamente.');
+        return redirect()->route('index');
     }
+
+
 
     public function panelAdmin()
     {

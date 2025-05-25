@@ -82,7 +82,6 @@
     </div>
 @endif
 
-
     {{-- Ausencias --}}
     <div class="mb-5">
         <h4 class="mb-3">Ausencias del día ({{ $fecha_hoy }})</h4>
@@ -124,6 +123,10 @@
                 </a>
             @endif
         @endauth
+
+        <button onclick="window.location='{{ route('guardias.index') }}'" class="btn btn-primary">
+            Ver guardias pendientes
+        </button>
 
         <div>
             <a href="{{ route('ausencias.crear') }}" class="btn btn-primary me-2">
