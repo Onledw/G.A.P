@@ -4,12 +4,9 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 
 class Docente extends Authenticatable
 {
-    use HasApiTokens, Notifiable;
-
     protected $table = 'docentes';
     protected $primaryKey = 'id';
     public $incrementing = true;

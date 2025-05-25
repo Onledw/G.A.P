@@ -10,26 +10,34 @@ class AusenciaController extends Controller
 {
     public function registrar(Request $request)
     {
-        $request->validate([
-            'fecha_inicio' => 'required|date',
-            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
-            'motivo' => 'nullable|string',
-            'justificada' => 'nullable|boolean',
-            'todoeldia' => 'nullable|boolean',
-        ]);
+         $request->validate([
+             'fecha_inicio' => 'required|date',
+             'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+             'motivo' => 'nullable|string',
+             'justificada' => 'sometimes',
+             'todoeldia' => 'sometimes',
 
-        $docente = Auth::user();
+         ]);
 
-        $ausencia = Ausencia::create([
-            'docente_id' => $docente->id,
-            'fecha_inicio' => $request->fecha_inicio,
-            'fecha_fin' => $request->fecha_fin,
-            'motivo' => $request->motivo,
-            'justificada' => $request->has('justificada') ? 1 : 0,
-            'todoeldia' => $request->has('todoeldia') ? 1 : 0,
-        ]);
+         try {
+            $docente = Auth::user();
 
-        return redirect()->route('panel')->with('success', 'Ausencia registrada correctamente.');
+            Ausencia::create([
+                'docente_id' => $docente->id,
+                'fecha_inicio' => $request->fecha_inicio,
+                'fecha_fin' => $request->fecha_fin,
+                'motivo' => $request->motivo,
+                'justificada' => $request->has('justificada') ? 1 : 0,
+                'todoeldia' => $request->has('todoeldia') ? 1 : 0,
+            ]);
+
+            return redirect()->route('panel')->with('success', 'Ausencia registrada correctamente.');
+
+        } catch (\Exception $e) {
+            // Opcionalmente puedes registrar el error: Log::error($e);
+
+            return redirect()->back()->withInput()->with('error', 'Error al registrar la ausencia. Inténtalo de nuevo.');
+        }
     }
 
     public function verAusenciasDia()

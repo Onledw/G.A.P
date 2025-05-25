@@ -1,22 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Document</title>
-</head>
-<body>
+@extends('plantilla.app')
 
-    <h1>Modulo de Administrador</h1>
+@section('content')
 
-    <h2>Dar de Alta a un Docente</h2>
+<h1>Módulo de Administrador</h1>
 
-    @if(session('success'))
-        <p style="color: green;">{{ session('success') }}</p>
-    @endif
+<h2>Dar de Alta a un Docente</h2>
 
-    <form action="{{ route('admin.altaDocente') }}" method="POST">
+@if(session('success'))
+    <p style="color: green;">{{ session('success') }}</p>
+@endif
+
+@if($errors->any())
+    <div class="alert alert-danger">
+        <ul>
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
+<form action="{{ route('admin.altaDocente') }}" method="POST">
     @csrf
     <label for="dni">DNI:</label>
     <input type="text" name="dni" required><br>
@@ -53,37 +57,39 @@
 </form>
 
 @if(session('borrado'))
-<p style="color: green;">{{ session('borrado') }}</p>
+    <p style="color: green;">{{ session('borrado') }}</p>
 @endif
 
-<table border="1" cellpadding="5">
-<thead>
-    <tr>
-        <th>DNI</th>
-        <th>Nombre</th>
-        <th>Apellidos</th>
-        <th>Acción</th>
-    </tr>
-</thead>
-<tbody>
-    @foreach($docentes as $docente)
+<h2>Listado de Docentes</h2>
+<table class="table table-bordered table-hover">
+    <thead>
         <tr>
-            <td>{{ $docente->dni }}</td>
-            <td>{{ $docente->nombre }}</td>
-            <td>{{ $docente->apellido1 }} {{ $docente->apellido2 }}</td>
-            <td>
-                <form action="{{ route('admin.bajaDocente', $docente->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar al docente?');">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit">Eliminar</button>
-                </form>
-            </td>
+            <th>DNI</th>
+            <th>Nombre</th>
+            <th>Apellidos</th>
+            <th>Acción</th>
         </tr>
-    @endforeach
-</tbody>
+    </thead>
+    <tbody>
+        @foreach($docentes as $docente)
+            <tr>
+                <td>{{ $docente->dni }}</td>
+                <td>{{ $docente->nombre }}</td>
+                <td>{{ $docente->apellido1 }} {{ $docente->apellido2 }}</td>
+                <td>
+                    <form action="{{ route('admin.bajaDocente', $docente->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar al docente?');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger btn-sm">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+        @endforeach
+    </tbody>
 </table>
 
-        <button>Getion de los horarios</button>
-    </form>
-</body>
-</html>
+<div class="mt-4">
+    <a href="#" class="btn btn-secondary">Gestión de los horarios</a> {{-- Ajusta la ruta --}}
+</div>
+
+@endsection

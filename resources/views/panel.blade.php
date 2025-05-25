@@ -3,23 +3,23 @@
 @section('title', 'Panel Docente')
 
 @section('content')
+
     <div class="mb-4">
         <h2>Bienvenid@, {{ $usuario->nombre }} {{ $usuario->apellido1 }}</h2>
     </div>
 
     {{-- Botones de jornada --}}
     @if($registro_jornada_hoy && !$registro_jornada_hoy->fin)
-    <form action="{{ route('panel.finalizar') }}" method="POST">
+    <form action="{{ route('finalizar') }}" method="POST">
         @csrf
         <button class="btn btn-danger">Finalizar jornada</button>
     </form>
 @else
-    <form action="{{ route('panel.iniciar') }}" method="POST">
+    <form action="{{ route('iniciar') }}" method="POST">
         @csrf
         <button class="btn btn-success">Iniciar jornada</button>
     </form>
 @endif
-
 
     {{-- Horario --}}
     @php
@@ -76,7 +76,11 @@
         </tbody>
     </table>
 </div>
-
+@if(session('success'))
+    <div class="alert alert-success">
+        {{ session('success') }}
+    </div>
+@endif
 
 
     {{-- Ausencias --}}
@@ -112,55 +116,23 @@
         </table>
     </div>
 
-    {{-- AUSENCIAS DEL USUARIO --}}
-    <div class="mb-4 text-end">
-        <a href="{{ route('ausencias.historial') }}" class="btn btn-outline-primary">
-            Ver historial de ausencias
-        </a>
-    </div>
+    <div class="mb-4 d-flex justify-content-between align-items-center">
+        @auth
+            @if(Auth::user()->admin)
+                <a href="{{ route('admin.panel') }}" class="btn btn-warning">
+                    Ir al panel de administración
+                </a>
+            @endif
+        @endauth
 
-    <div class="mb-5">
-        <h4 class="mb-3">Tus ausencias</h4>
-        <table class="table table-striped">
-            <thead class="table-light">
-                <tr>
-                    <th>Desde</th>
-                    <th>Hasta</th>
-                    <th>Todo el día</th>
-                    <th>Justificada</th>
-                    <th>Motivo</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($ausencias as $ausencia)
-                    <tr>
-                        <td>{{ \Carbon\Carbon::parse($ausencia->fecha_inicio)->format('d/m/Y H:i') }}</td>
-                        <td>{{ \Carbon\Carbon::parse($ausencia->fecha_fin)->format('d/m/Y H:i') }}</td>
-                        <td>
-                            <span class="badge {{ $ausencia->todoeldia ? 'bg-success' : 'bg-secondary' }}">
-                                {{ $ausencia->todoeldia ? 'Sí' : 'No' }}
-                            </span>
-                        </td>
-                        <td>
-                            <span class="badge {{ $ausencia->justificada ? 'bg-info' : 'bg-warning' }}">
-                                {{ $ausencia->justificada ? 'Sí' : 'No' }}
-                            </span>
-                        </td>
-                        <td>{{ $ausencia->motivo ?? '-' }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="text-center">No tienes ausencias registradas.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-
-
-    {{-- BOTÓN HISTORIAL --}}
-    <div class="text-end">
-        <a href="{{ route('ausencias.historial') }}" class="btn btn-outline-primary">Ver historial completo</a>
+        <div>
+            <a href="{{ route('ausencias.crear') }}" class="btn btn-primary me-2">
+                Registrar nueva ausencia
+            </a>
+            <a href="{{ route('ausencias.historial') }}" class="btn btn-outline-primary">
+                Ver historial de ausencias
+            </a>
+        </div>
     </div>
 
 @endsection
