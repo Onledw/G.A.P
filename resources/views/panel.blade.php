@@ -124,7 +124,7 @@
             @endif
         @endauth
 
-        <button onclick="window.location='{{ route('guardias.index') }}'" class="btn btn-primary">
+        <button onclick="window.location='{{ route('guardias.pendientes') }}'" class="btn btn-primary">
             Ver guardias pendientes
         </button>
 
