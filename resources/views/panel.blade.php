@@ -121,6 +121,10 @@
                 <a href="{{ route('admin.panel') }}" class="btn btn-warning">
                     Ir al panel de administración
                 </a>
+                <!-- Botón para ir al módulo de informes -->
+                <a href="{{ route('informes.index') }}" class="btn btn-primary">
+                    Ir a Informes
+                </a>
             @endif
         @endauth
 

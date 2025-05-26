@@ -6,6 +6,7 @@ use App\Http\Controllers\PanelController;
 use App\Http\Controllers\AusenciaController;
 use App\Http\Controllers\GuardiaController;
 use App\Http\Controllers\RegistroJornadaController;
+use App\Http\Controllers\InformeController;
 
 // ——————————————————————————————
 // RUTAS PÚBLICAS
@@ -45,5 +46,9 @@ Route::post('/admin/alta', [AuthController::class, 'altaDocente'])->name('admin.
 Route::delete('/admin/baja/{id}', [AuthController::class, 'bajaDocente'])->name('admin.bajaDocente');
 
 
+});
 
+Route::middleware(['auth'])->group(function () {
+    Route::get('/informes/registros', [InformeController::class, 'index'])->name('informes.index');
+    Route::get('/informes/generar', [InformeController::class, 'generar'])->name('informes.generar');
 });
