@@ -37,11 +37,8 @@ Route::get('/ausencias/crear', function () {
 
 Route::get('/ausencias/historial', [AusenciaController::class, 'historial'])->name('ausencias.historial');
 
-Route::get('/guardias', [GuardiaController::class, 'mostrarPendientes'])->name('guardias.pendientes');
-
-Route::post('/guardias/asignar', [GuardiaController::class, 'asignarGuardia'])->name('guardias.asignar');
-
-Route::post('/guardias', [GuardiaController::class, 'store'])->name('guardias.store');
+Route::post('/guardias', [GuardiaController::class, 'registrar'])->name('guardias.store');
+Route::get('/guardias/pendientes', [GuardiaController::class, 'mostrarPendientes'])->name('guardias.pendientes');
 
 Route::get('/admin', [AuthController::class, 'panelAdmin'])->name('admin.panel');
 Route::post('/admin/alta', [AuthController::class, 'altaDocente'])->name('admin.altaDocente');
