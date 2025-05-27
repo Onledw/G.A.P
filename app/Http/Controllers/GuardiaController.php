@@ -86,7 +86,7 @@ class GuardiaController extends Controller
     public function registrar(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'hora' => 'required|date_format:H:i',
+            'hora' => 'required|date_format:H:i:s',
             'aula' => 'required|string|max:255',
             'ausencia_id' => 'required|integer|exists:ausencias,id',
         ]);

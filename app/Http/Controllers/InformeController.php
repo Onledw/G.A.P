@@ -5,134 +5,120 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Docente;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Collection; // para usar collect()
+use Carbon\Carbon;
 
 class InformeController extends Controller
 {
     public function index()
     {
         $docentes = Docente::orderBy('nombre')->get();
-
-        // Paso resultados como colección vacía para evitar error si no hay resultados aún
-        $resultados = collect();
-
+        $resultados = collect(); // colección vacía al principio
         return view('informes.registros', compact('docentes', 'resultados'));
     }
 
     public function generar(Request $request)
     {
-        $tipo = $request->input('tipo');
-        $fecha = $request->input('fecha');
-        $docenteId = $request->input('docente_id');
+        // Validación dinámica según el tipo
+        $rules = [
+            'tipo' => 'required|in:dia,semana,mes,trimestre,curso,docente',
+        ];
 
+        if (in_array($request->tipo, ['dia', 'semana', 'mes', 'trimestre'])) {
+            $rules['fecha'] = 'required|date';
+        }
+
+        if ($request->tipo === 'docente') {
+            $rules['docente_id'] = 'required|exists:docentes,id';
+        }
+
+        $request->validate($rules);
+
+        // Construcción de la consulta
         $query = DB::table('ausencias')
             ->join('docentes', 'ausencias.docente_id', '=', 'docentes.id')
             ->select('docentes.nombre', 'ausencias.fecha_inicio', 'ausencias.fecha_fin', 'ausencias.motivo');
 
-        switch ($tipo) {
+        switch ($request->tipo) {
             case 'dia':
-                if (!$fecha) {
-                    return back()->with('error', 'Debe seleccionar una fecha.');
-                }
-                $query->whereDate('fecha_inicio', '<=', $fecha)
-                      ->whereDate('fecha_fin', '>=', $fecha);
+                $query->whereDate('fecha_inicio', '<=', $request->fecha)
+                      ->whereDate('fecha_fin', '>=', $request->fecha);
                 break;
 
             case 'semana':
-                if (!$fecha) {
-                    return back()->with('error', 'Debe seleccionar una fecha para la semana.');
-                }
-                $fechaCarbon = \Carbon\Carbon::parse($fecha);
-                $inicioSemana = $fechaCarbon->startOfWeek()->toDateString();
-                $finSemana = $fechaCarbon->endOfWeek()->toDateString();
-                $query->where(function ($q) use ($inicioSemana, $finSemana) {
-                    $q->whereBetween('fecha_inicio', [$inicioSemana, $finSemana])
-                      ->orWhereBetween('fecha_fin', [$inicioSemana, $finSemana])
-                      ->orWhere(function ($q2) use ($inicioSemana, $finSemana) {
-                          $q2->where('fecha_inicio', '<=', $inicioSemana)
-                             ->where('fecha_fin', '>=', $finSemana);
+                $carbon = Carbon::parse($request->fecha);
+                $query->where(function ($q) use ($carbon) {
+                    $q->whereBetween('fecha_inicio', [$carbon->copy()->startOfWeek(), $carbon->copy()->endOfWeek()])
+                      ->orWhereBetween('fecha_fin', [$carbon->startOfWeek(), $carbon->endOfWeek()])
+                      ->orWhere(function ($q2) use ($carbon) {
+                          $q2->where('fecha_inicio', '<=', $carbon->startOfWeek())
+                             ->where('fecha_fin', '>=', $carbon->endOfWeek());
                       });
                 });
                 break;
 
             case 'mes':
-                if (!$fecha) {
-                    return back()->with('error', 'Debe seleccionar un mes.');
-                }
-                $fechaCarbon = \Carbon\Carbon::parse($fecha);
-                $inicioMes = $fechaCarbon->startOfMonth()->toDateString();
-                $finMes = $fechaCarbon->endOfMonth()->toDateString();
-                $query->where(function ($q) use ($inicioMes, $finMes) {
-                    $q->whereBetween('fecha_inicio', [$inicioMes, $finMes])
-                      ->orWhereBetween('fecha_fin', [$inicioMes, $finMes])
-                      ->orWhere(function ($q2) use ($inicioMes, $finMes) {
-                          $q2->where('fecha_inicio', '<=', $inicioMes)
-                             ->where('fecha_fin', '>=', $finMes);
+                $carbon = Carbon::parse($request->fecha);
+                $inicio = $carbon->startOfMonth()->toDateString();
+                $fin = $carbon->endOfMonth()->toDateString();
+                $query->where(function ($q) use ($inicio, $fin) {
+                    $q->whereBetween('fecha_inicio', [$inicio, $fin])
+                      ->orWhereBetween('fecha_fin', [$inicio, $fin])
+                      ->orWhere(function ($q2) use ($inicio, $fin) {
+                          $q2->where('fecha_inicio', '<=', $inicio)
+                             ->where('fecha_fin', '>=', $fin);
                       });
                 });
                 break;
 
             case 'trimestre':
-                if (!$fecha) {
-                    return back()->with('error', 'Debe seleccionar una fecha para el trimestre.');
-                }
-                $fechaCarbon = \Carbon\Carbon::parse($fecha);
-                $mes = $fechaCarbon->month;
-                // Determinar trimestre
+                $carbon = Carbon::parse($request->fecha);
+                $mes = $carbon->month;
                 if ($mes <= 3) {
-                    $inicioTrimestre = $fechaCarbon->copy()->startOfYear()->toDateString();
-                    $finTrimestre = $fechaCarbon->copy()->month(3)->endOfMonth()->toDateString();
+                    $inicio = Carbon::create($carbon->year, 1, 1)->toDateString();
+                    $fin = Carbon::create($carbon->year, 3, 31)->toDateString();
                 } elseif ($mes <= 6) {
-                    $inicioTrimestre = $fechaCarbon->copy()->month(4)->startOfMonth()->toDateString();
-                    $finTrimestre = $fechaCarbon->copy()->month(6)->endOfMonth()->toDateString();
+                    $inicio = Carbon::create($carbon->year, 4, 1)->toDateString();
+                    $fin = Carbon::create($carbon->year, 6, 30)->toDateString();
                 } elseif ($mes <= 9) {
-                    $inicioTrimestre = $fechaCarbon->copy()->month(7)->startOfMonth()->toDateString();
-                    $finTrimestre = $fechaCarbon->copy()->month(9)->endOfMonth()->toDateString();
+                    $inicio = Carbon::create($carbon->year, 7, 1)->toDateString();
+                    $fin = Carbon::create($carbon->year, 9, 30)->toDateString();
                 } else {
-                    $inicioTrimestre = $fechaCarbon->copy()->month(10)->startOfMonth()->toDateString();
-                    $finTrimestre = $fechaCarbon->copy()->month(12)->endOfMonth()->toDateString();
+                    $inicio = Carbon::create($carbon->year, 10, 1)->toDateString();
+                    $fin = Carbon::create($carbon->year, 12, 31)->toDateString();
                 }
-                $query->where(function ($q) use ($inicioTrimestre, $finTrimestre) {
-                    $q->whereBetween('fecha_inicio', [$inicioTrimestre, $finTrimestre])
-                      ->orWhereBetween('fecha_fin', [$inicioTrimestre, $finTrimestre])
-                      ->orWhere(function ($q2) use ($inicioTrimestre, $finTrimestre) {
-                          $q2->where('fecha_inicio', '<=', $inicioTrimestre)
-                             ->where('fecha_fin', '>=', $finTrimestre);
+
+                $query->where(function ($q) use ($inicio, $fin) {
+                    $q->whereBetween('fecha_inicio', [$inicio, $fin])
+                      ->orWhereBetween('fecha_fin', [$inicio, $fin])
+                      ->orWhere(function ($q2) use ($inicio, $fin) {
+                          $q2->where('fecha_inicio', '<=', $inicio)
+                             ->where('fecha_fin', '>=', $fin);
                       });
                 });
                 break;
 
             case 'curso':
-                // Curso completo: asumo año lectivo, 1 Sep a 31 Ago siguiente año
                 $year = now()->year;
-                $inicioCurso = \Carbon\Carbon::create($year, 9, 1)->toDateString();
-                $finCurso = \Carbon\Carbon::create($year + 1, 8, 31)->toDateString();
-                $query->where(function ($q) use ($inicioCurso, $finCurso) {
-                    $q->whereBetween('fecha_inicio', [$inicioCurso, $finCurso])
-                      ->orWhereBetween('fecha_fin', [$inicioCurso, $finCurso])
-                      ->orWhere(function ($q2) use ($inicioCurso, $finCurso) {
-                          $q2->where('fecha_inicio', '<=', $inicioCurso)
-                             ->where('fecha_fin', '>=', $finCurso);
+                $inicio = Carbon::create($year, 9, 1)->toDateString();
+                $fin = Carbon::create($year + 1, 8, 31)->toDateString();
+                $query->where(function ($q) use ($inicio, $fin) {
+                    $q->whereBetween('fecha_inicio', [$inicio, $fin])
+                      ->orWhereBetween('fecha_fin', [$inicio, $fin])
+                      ->orWhere(function ($q2) use ($inicio, $fin) {
+                          $q2->where('fecha_inicio', '<=', $inicio)
+                             ->where('fecha_fin', '>=', $fin);
                       });
                 });
                 break;
 
             case 'docente':
-                if (!$docenteId) {
-                    return back()->with('error', 'Debe seleccionar un docente.');
-                }
-                $query->where('docente_id', $docenteId);
+                $query->where('docente_id', $request->docente_id);
                 break;
-
-            default:
-                return back()->with('error', 'Tipo de informe no válido.');
         }
 
         $resultados = $query->orderBy('fecha_inicio')->get();
-
         $docentes = Docente::orderBy('nombre')->get();
-        // dd($resultados[0]);
 
-        return view('informes.registros', compact('resultados', 'docentes'))->withInput();
+        return view('informes.registros', compact('resultados', 'docentes'));
     }
 }
