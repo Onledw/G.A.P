@@ -13,32 +13,13 @@
             padding-top: 60px;
         }
         /* Ajustamos sidebar para que ocupe altura completa y sea fijo */
-        .sidebar {
-            position: fixed;
-            top: 60px; /* altura navbar */
-            bottom: 0;
-            left: 0;
-            width: 220px;
-            padding: 1rem;
-            background-color: #f8f9fa;
-            overflow-y: auto;
-            border-right: 1px solid #dee2e6;
-        }
+
         .content-area {
             margin-left: 220px;
             padding: 1rem;
         }
-        @media (max-width: 768px) {
-            .sidebar {
-                position: static;
-                width: 100%;
-                height: auto;
-                border-right: none;
-            }
-            .content-area {
-                margin-left: 0;
-            }
-        }
+
+
     </style>
 </head>
 <body>
@@ -46,6 +27,8 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ route('panel') }}">G.A.P</a>
+            <a class="navbar-brand" href="{{ route('guardias.pendientes') }}">Guardias Pendientes</a>
+            <a class="navbar-brand" href="{{ route('informes.index') }}">Informes</a>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
@@ -59,14 +42,6 @@
         </div>
     </nav>
 
-    <aside class="sidebar">
-        <div class="list-group">
-            <a href="{{ route('panel') }}" class="list-group-item list-group-item-action">Panel Principal</a>
-            <a href="{{ route('guardias.pendientes') }}" class="list-group-item list-group-item-action">Guardias Pendientes</a>
-            <a href="{{ route('informes.index') }}" class="list-group-item list-group-item-action">Informes</a>
-            {{-- Agrega más enlaces si quieres --}}
-        </div>
-    </aside>
 
     <main class="content-area">
         <div class="container-fluid">
@@ -74,7 +49,6 @@
         </div>
     </main>
 
-    {{-- Bootstrap JS --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>

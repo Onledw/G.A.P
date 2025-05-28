@@ -3,119 +3,145 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Log;
-use App\Models\Guardia;
+use Illuminate\Support\Facades\Auth;
+use App\Models\SesionElectiva;
 
 class GuardiaController extends Controller
 {
-
     /**
-     * Mostrar guardias pendientes a cubrir.
+     * Mostrar guardias pendientes a cubrir y el historial.
      */
     public function mostrarPendientes()
-    {
-        $hoy = now();
-        $diaSemana = match ($hoy->dayOfWeekIso) {
-            1 => 'L', 2 => 'M', 3 => 'X', 4 => 'J', 5 => 'V', default => null,
-        };
+{
+    $hoy = now();
+    $docente = auth()->user();
 
-        $guardiasPendientes = DB::select("
-            SELECT
-                s.id AS sesion_id,
-                s.docente_id AS ausente_id,
-                d.nombre AS nombre_ausente,
-                s.materia,
-                s.aula,
-                s.hora_inicio,
-                s.hora_fin,
-                a.id AS ausencia_id
-            FROM sesiones_lectivas s
-            JOIN ausencias a ON s.docente_id = a.docente_id
-            JOIN docentes d ON d.id = s.docente_id
-            WHERE CURDATE() BETWEEN DATE(a.fecha_inicio) AND DATE(a.fecha_fin)
-                AND s.dia_semana = ?
-                AND (
-                    a.todoeldia = 1 OR (
-                        s.hora_inicio >= TIME(a.fecha_inicio)
-                        AND s.hora_fin <= TIME(a.fecha_fin)
-                    )
-                )
-                AND NOT EXISTS (
-                    SELECT 1 FROM guardias g
-                    WHERE g.fecha = CURDATE()
-                      AND g.hora = s.hora_inicio
-                      AND g.aula = s.aula
-                )
-                AND EXISTS (
-                    SELECT 1
-                    FROM sesiones_lectivas libres
-                    WHERE libres.dia_semana = s.dia_semana
-                      AND libres.hora_inicio = s.hora_inicio
-                      AND libres.docente_id != s.docente_id
-                      AND libres.materia = 'Guardia'
-                      AND NOT EXISTS (
-                          SELECT 1 FROM ausencias a2
-                          WHERE a2.docente_id = libres.docente_id
-                            AND CURDATE() BETWEEN DATE(a2.fecha_inicio) AND DATE(a2.fecha_fin)
-                            AND (
-                                a2.todoeldia = 1 OR (
-                                    libres.hora_inicio >= TIME(a2.fecha_inicio)
-                                    AND libres.hora_fin <= TIME(a2.fecha_fin)
-                                )
-                            )
-                      )
-                )
-        ", [$diaSemana]);
-
-        $guardiasHistorial = DB::table('guardias as g')
-        ->join('docentes as d', 'g.docente_id', '=', 'd.dni')
-        ->join('ausencias as a', 'g.ausencia_id', '=', 'a.id')
-            ->select('g.*', 'd.nombre as docente_nombre', 'a.fecha_inicio', 'a.fecha_fin')
-            ->where('g.estado', 'cubierta') // <- Esto es opcional si solo quieres las cubiertas
-            ->orderBy('g.fecha', 'desc')
-            ->get();
-
-        return view('guardias.pendientes', compact('guardiasPendientes', 'guardiasHistorial'));
+    if (!$docente) {
+        return redirect()->route('login')->with('error', 'Debes iniciar sesión para continuar.');
     }
 
+    $diaSemana = match ($hoy->dayOfWeekIso) {
+        1 => 'L', 2 => 'M', 3 => 'X', 4 => 'J', 5 => 'V', default => null,
+    };
 
-    /**
-     * Registrar una guardia cubierta.
-     */
+    if (!$diaSemana) {
+        return back()->with('error', 'No hay guardias para hoy.');
+    }
+
+    $sesionesGuardiaDocente = SesionElectiva::where('docente_id', $docente->id)
+        ->where('dia_semana', $diaSemana)
+        ->where('materia', 'Guardia')
+        ->get();
+
+    if ($sesionesGuardiaDocente->isEmpty()) {
+        return view('guardias.pendientes', [
+            'guardiasPendientes' => collect(),
+            'guardiasHistorial' => collect(),
+            'docente' => $docente,
+        ])->with('error', 'No tienes guardias asignadas para hoy.');
+    }
+
+    $guardiasPendientes = DB::table('sesiones_lectivas as s')
+        ->join('ausencias as a', 's.docente_id', '=', 'a.docente_id')
+        ->join('docentes as d', 'd.id', '=', 's.docente_id')
+        ->whereDate('a.fecha_inicio', '<=', $hoy->toDateString())
+        ->whereDate('a.fecha_fin', '>=', $hoy->toDateString())
+        ->where('s.dia_semana', $diaSemana)
+        ->where('s.docente_id', '!=', $docente->id)
+        ->where(function ($query) {
+            $query->where('a.todoeldia', 1)
+                  ->orWhere(function ($q) {
+                      $q->whereTime('s.hora_inicio', '>=', DB::raw('TIME(a.fecha_inicio)'))
+                        ->whereTime('s.hora_fin', '<=', DB::raw('TIME(a.fecha_fin)'));
+                  });
+        })
+        ->whereNotExists(function ($query) use ($hoy) {
+            $query->select(DB::raw(1))
+                ->from('guardias as g')
+                ->where('g.fecha', $hoy->toDateString())
+                ->whereColumn('g.hora', 's.hora_inicio')
+                ->whereColumn('g.aula', 's.aula');
+        })
+        ->select(
+            's.id as sesion_id',
+            's.docente_id as ausente_id',
+            'd.nombre as nombre_ausente',
+            's.materia',
+            's.aula',
+            's.hora_inicio',
+            's.hora_fin',
+            'a.id as ausencia_id'
+        )
+        ->get();
+
+    // Filtrar según coincidencia en hora de inicio solamente
+    $guardiasPermitidas = $guardiasPendientes->filter(function ($guardiaPendiente) use ($sesionesGuardiaDocente) {
+        foreach ($sesionesGuardiaDocente as $sesion) {
+            if ($guardiaPendiente->hora_inicio == $sesion->hora_inicio) {
+                return true;
+            }
+        }
+        return false;
+    })->values();
+
+    $guardiasHistorial = DB::table('guardias as g')
+        ->join('docentes as d', 'g.docente_id', '=', 'd.id')
+        ->join('ausencias as a', 'g.ausencia_id', '=', 'a.id')
+        ->select('g.*', 'd.nombre as docente_nombre', 'a.fecha_inicio', 'a.fecha_fin')
+        ->where('g.estado', 'cubierta')
+        ->orderBy('g.fecha', 'desc')
+        ->get();
+
+    return view('guardias.pendientes', [
+        'guardiasPendientes' => $guardiasPermitidas,
+        'guardiasHistorial' => $guardiasHistorial,
+        'docente' => $docente,
+    ]);
+}
+
     public function registrar(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'hora' => 'required|date_format:H:i:s',
-            'aula' => 'required|string|max:255',
-            'ausencia_id' => 'required|integer|exists:ausencias,id',
+        $docente = auth()->user();
+
+        if (!$docente) {
+            return redirect()->route('login')->with('error', 'Debes iniciar sesión para continuar.');
+        }
+
+        // Validar datos mínimos
+        $request->validate([
+            'ausencia_id' => 'required|exists:ausencias,id',
+            'hora' => 'required',
+            'aula' => 'required|string|max:50',
         ]);
 
-        if ($validator->fails()) {
-            return back()
-                ->withErrors($validator)
-                ->withInput()
-                ->with('error', 'Fallo en la validación del formulario.');
+        $ausenciaId = $request->input('ausencia_id');
+        $hora = $request->input('hora');
+        $aula = $request->input('aula');
+        $fecha = now()->toDateString();
+
+        // Comprobar si ya existe guardia para esa fecha, hora y aula (evitar duplicados)
+        $existeGuardia = DB::table('guardias')
+            ->where('fecha', $fecha)
+            ->where('hora', $hora)
+            ->where('aula', $aula)
+            ->exists();
+
+        if ($existeGuardia) {
+            return redirect()->back()->with('error', 'Esa guardia ya fue cubierta.');
         }
 
-        try {
-            DB::table('guardias')->insert([
-                'fecha' => now()->toDateString(),
-                'hora' => $request->hora,
-                'aula' => $request->aula,
-                'docente_id' => auth()->id(),
-                'ausencia_id' => $request->ausencia_id,
-                'estado' => 'cubierta',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        // Insertar registro de guardia cubierta
+        DB::table('guardias')->insert([
+            'docente_id' => $docente->id,
+            'ausencia_id' => $ausenciaId,
+            'fecha' => $fecha,
+            'hora' => $hora,
+            'aula' => $aula,
+            'estado' => 'cubierta',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
-            return redirect()
-                ->route('guardias.pendientes')
-                ->with('success', 'Guardia asignada correctamente.');
-        } catch (\Exception $e) {
-            Log::error('Error al asignar guardia: ' . $e->getMessage());
-            return back()->with('error', 'Hubo un problema al guardar la guardia.');
-        }
+        return redirect()->route('guardias.pendientes')->with('success', 'Guardia cubierta con éxito.');
     }
 }
