@@ -78,7 +78,21 @@
         @endif
     @endif
 </div>
+@if ($resultados->isNotEmpty())
+    <form action="{{ route('informes.txt') }}" method="POST" class="mb-3">
+        @csrf
+        <input type="hidden" name="tipo" value="{{ request('tipo') }}">  <!-- Aquí -->
+        <input type="hidden" name="fecha" value="{{ request('fecha') }}">
+        <input type="hidden" name="docente_id" value="{{ request('docente_id') }}">
+        <button type="submit">Exportar a TXT</button>
+    </form>
+@endif
 
+@if (session('mensaje'))
+<div class="alert alert-success mt-2">
+    {{ session('mensaje') }}
+</div>
+@endif
 
     <script>
         function toggleFechaDocente() {

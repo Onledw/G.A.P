@@ -49,6 +49,7 @@ Route::delete('/admin/baja/{id}', [AuthController::class, 'bajaDocente'])->name(
 });
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/informes/registros', [InformeController::class, 'index'])->name('informes.index');
+    Route::get('/informes', [InformeController::class, 'index'])->name('informes.index');
     Route::post('/informes/generar', [InformeController::class, 'generar'])->name('informes.generar');
+    Route::post('/informes/txt', [InformeController::class, 'exportarTXT'])->name('informes.txt');
 });
